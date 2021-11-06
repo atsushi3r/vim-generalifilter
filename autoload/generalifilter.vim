@@ -14,43 +14,6 @@ augroup GeneralIFilter
     autocmd!
 augroup END
 
-let s:choices = #{
-        \ contents      : [],
-        \ descriptions  : [],
-        \ nodescriptions: 1,
-        \ count         : 0,
-        \ candidxs      : [],
-        \ selidx        : -1,
-        \ }
-let g:choices = s:choices
-
-function! s:choices.str(idx) abort "{{{
-    let content = self.contents[a:idx]
-    let description = s:choices.nodescriptions ? '' : self.descriptions[a:idx]
-    let contentspace = s:choices.nodescriptions ? &textwidth : &textwidth / 3
-    let contentlength = min([contentspace - 2,
-            \ max(mapnew(s:choices.contents, { _,cont -> strlen(cont) }))])
-    let res = trim(call('printf', [
-            \ '%-' . contentlength . '.' . contentlength . 's %s %s',
-            \ content,
-            \ s:delimiter,
-            \ description
-            \ ]))
-    return  (a:idx == self.selidx ? '> ' : '  ') . res
-endfunction "}}}
-
-let s:cands = #{
-        \ _idxs  : [],
-        \ count : 0
-        \ }
-
-function! s:cands.idxs(idxs=v:none) abort "{{{
-    if type(a:idxs) == v:t_none
-        return self._idxs
-    endif
-    let self._idxs = a:idxs
-    let self.count = len(a:idxs)
-endfunction "}}}
 
 function! generalifilter#filter(choices=v:none, prompt=v:none) abort "{{{
     call s:init(a:choices, a:prompt)
@@ -62,18 +25,52 @@ function! generalifilter#filter(choices=v:none, prompt=v:none) abort "{{{
 endfunction "}}}
 
 function! s:init(choices, prompt) abort "{{{
-    if type(a:choices) == v:t_none
-        if s:choices.count
-            call s:cands.idxs(range(s:choices.count))
-            let s:choices.selidx = -1
-        endif
-    else
-        call s:set_choices(a:choices)
-    endif
+    call s:init_choices()
+    call s:init_cands()
+    call s:set_choices(a:choices)
+    call s:set_prompt(a:prompt)
+endfunction "}}}
 
-    if !(type(a:prompt) == v:t_none)
-        call s:set_prompt(a:prompt)
-    endif
+function! s:init_choices() abort "{{{
+    let s:choices = #{
+            \ contents      : [],
+            \ descriptions  : [],
+            \ nodescriptions: 1,
+            \ count         : 0,
+            \ candidxs      : [],
+            \ selidx        : -1,
+            \ }
+    let g:choices = s:choices
+
+    function! s:choices.str(idx) abort "{{{
+        let content = self.contents[a:idx]
+        let description = s:choices.nodescriptions ? '' : self.descriptions[a:idx]
+        let contentspace = s:choices.nodescriptions ? &textwidth : &textwidth / 3
+        let contentlength = min([contentspace - 2,
+                \ max(mapnew(s:choices.contents, { _,cont -> strlen(cont) }))])
+        let res = trim(call('printf', [
+                \ '%-' . contentlength . '.' . contentlength . 's %s %s',
+                \ content,
+                \ s:delimiter,
+                \ description
+                \ ]))
+        return  (a:idx == self.selidx ? '> ' : '  ') . res
+    endfunction "}}}
+endfunction "}}}
+
+function! s:init_cands() abort "{{{
+    let s:cands = #{
+            \ _idxs : [],
+            \ count : 0
+            \ }
+
+    function! s:cands.idxs(idxs=v:none) abort "{{{
+        if type(a:idxs) == v:t_none
+            return self._idxs
+        endif
+        let self._idxs = a:idxs
+        let self.count = len(a:idxs)
+    endfunction "}}}
 endfunction "}}}
 
 function! s:set_choices(choices) abort "{{{
@@ -109,7 +106,9 @@ function! s:set_choices_asdict(choices) abort "{{{
 endfunction "}}}
 
 function! s:set_prompt(prompt) abort "{{{
-    let s:prompt = a:prompt
+    if type(a:prompt) != v:t_none
+        let s:prompt = a:prompt
+    endif
 endfunction "}}}
 
 function! s:create_window() abort "{{{
