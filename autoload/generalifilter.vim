@@ -8,7 +8,7 @@ set cpo&vim
 
 " separator between choices and their descriptions (to be concealed)
 let s:delimiter = '\\'
-let s:prompt = '>>'
+let s:prompt = '>> '
 
 augroup GeneralIFilter
     autocmd!
@@ -26,7 +26,7 @@ let g:choices = s:choices
 
 function! s:choices.str(idx) abort "{{{
     let content = self.contents[a:idx]
-    let description = self.descriptions[a:idx]
+    let description = s:choices.nodescriptions ? '' : self.descriptions[a:idx]
     let contentspace = s:choices.nodescriptions ? &textwidth : &textwidth / 3
     let contentlength = min([contentspace - 2,
             \ max(mapnew(s:choices.contents, { _,cont -> strlen(cont) }))])
