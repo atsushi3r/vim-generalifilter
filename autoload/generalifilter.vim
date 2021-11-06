@@ -191,7 +191,7 @@ function! s:move_cursor_bottom() abort "{{{
     let s:choices.selidx = get(s:cands.idxs(), -1, -1)
 endfunction "}}}
 
-function! s:initialize_window() abort "{{{
+function! s:init_window() abort "{{{
     call win_execute(s:winid, '%delete')
     call win_execute(s:winid, 'resize ' . min([&lines / 4, s:cands.count]))
     call setbufline(s:bufnr, 1,
@@ -202,7 +202,7 @@ endfunction "}}}
 
 function! s:render() abort "{{{
     call s:update_cursorrow()
-    call s:initialize_window()
+    call s:init_window()
     echohl Directory | echon s:prompt | echohl None
     "echohl Directory | echon '(selidx,cursorrow)=('.s:choices.selidx.','.s:cursorrow.')' | echohl None
     call s:mock_cursor()
