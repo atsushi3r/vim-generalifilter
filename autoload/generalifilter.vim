@@ -149,7 +149,6 @@ function! s:interactive_filter() abort "{{{
     let s:inputstr = ''
     let s:inputstrlength = 0
     let s:cursorcol = 0
-    " 1 <= s:cursorrow <= s:winheight
     let s:cursorrow = s:cands.count
     let s:result = ''
     let s:status = 0
