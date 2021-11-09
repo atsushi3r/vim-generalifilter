@@ -163,6 +163,8 @@ function! s:interactive_filter() abort "{{{
 
         call s:filter(s:inputstr)
         call Debug('s:cands.idxs() : ' . string(s:cands.idxs()))
+        call s:sort()
+        "call Debug('s:cands.idxs() : ' . string(s:cands.idxs()))
     endwhile
     redraw!
     return #{result: s:result, status: s:status}
@@ -262,6 +264,10 @@ function! s:filter(expr) abort "{{{
     endif
     let [cands, poses, scores] = matchfuzzypos(s:choices.contents, a:expr)
     call s:cands.idxs(filter(range(s:choices.count), { _,idx -> index(cands, s:choices.contents[idx]) != -1 }))
+endfunction "}}}
+
+function! s:sort() abort "{{{
+    
 endfunction "}}}
 
 
