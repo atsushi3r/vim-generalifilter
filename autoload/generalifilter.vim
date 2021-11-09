@@ -83,7 +83,7 @@ function! s:set_choices(choices) abort "{{{
 endfunction "}}}
 
 function! s:set_choices_aslist(choices) abort "{{{
-    let s:choices.contents = a:choices
+    let s:choices.contents = mapnew(a:choices, 'string(v:val)')
     if index(s:choices.contents, '') == -1
         call add(s:choices.contents, '')
     endif
