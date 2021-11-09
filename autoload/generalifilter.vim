@@ -8,7 +8,7 @@ set cpo&vim
 
 " separator between choices and their descriptions (to be concealed)
 let s:delimiter = '\\'
-let s:prompt = '>> '
+let s:defaultprompt = '>> '
 
 augroup GeneralIFilter
     autocmd!
@@ -28,7 +28,7 @@ function! s:init(choices, prompt) abort "{{{
     call s:init_choices()
     call s:init_cands()
     call s:set_choices(a:choices)
-    call s:set_prompt(a:prompt)
+    call s:init_prompt(a:prompt)
 endfunction "}}}
 
 function! s:init_choices() abort "{{{
@@ -105,10 +105,8 @@ function! s:set_choices_asdict(choices) abort "{{{
     call s:cands.idxs(range(s:choices.count))
 endfunction "}}}
 
-function! s:set_prompt(prompt) abort "{{{
-    if type(a:prompt) != v:t_none
-        let s:prompt = a:prompt
-    endif
+function! s:init_prompt(prompt) abort "{{{
+    let s:prompt = type(a:prompt) != v:t_none ? a:prompt : s:defaultprompt
 endfunction "}}}
 
 function! s:create_window() abort "{{{
