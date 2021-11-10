@@ -40,7 +40,7 @@ function! s:init_choices() abort "{{{
             \ candidxs      : [],
             \ selidx        : -1,
             \ }
-    let g:choices = s:choices
+    let g:choices = s:choices " debug
 
     function! s:choices.str(idx) abort "{{{
         let content = self.contents[a:idx]
