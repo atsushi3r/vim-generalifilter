@@ -205,12 +205,12 @@ endfunction "}}}
 
 function! s:render() abort "{{{
     call s:update_cursorrow()
-    call s:init_window()
+    call s:update_window()
     echohl Directory | echon s:prompt | echohl None
     call s:mock_cursor()
 endfunction "}}}
 
-function! s:init_window() abort "{{{
+function! s:update_window() abort "{{{
     call win_execute(s:winid, '%delete')
     call win_execute(s:winid, 'resize ' . min([&lines / 4, s:candidates.count]))
     call setbufline(s:bufnr, 1,
