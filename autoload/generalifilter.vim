@@ -207,7 +207,6 @@ function! s:render() abort "{{{
     call s:update_cursorrow()
     call s:init_window()
     echohl Directory | echon s:prompt | echohl None
-    "echohl Directory | echon '(selidx,cursorrow)=('.s:choices.selidx.','.s:cursorrow.')' | echohl None
     call s:mock_cursor()
 endfunction "}}}
 
