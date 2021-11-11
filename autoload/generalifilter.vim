@@ -43,7 +43,7 @@ function! s:init_choices() abort "{{{
     function! s:choices.str(idx) abort "{{{
         let content = self.contents[a:idx]
         let width = winwidth(s:winid) - &numberwidth
-        let description = s:choices.nodescriptions ? '' : self.description[a:idx]
+        let description = s:choices.nodescriptions ? '' : self.descriptions[a:idx]
         let contentspace = s:choices.nodescriptions ? width : width / 3
         let contentlength = min([contentspace - 2,
                 \ max(mapnew(s:choices.contents, { _,cont -> strlen(cont) }))])
@@ -206,6 +206,14 @@ function! s:move_cursor_bottom() abort "{{{
     let s:choices.selidx = get(s:candidates.idxes, -1, -1)
 endfunction "}}}
 
+function! s:render() abort "{{{
+    call s:update_cursorrow()
+    call s:init_window()
+    echohl Directory | echon s:prompt | echohl None
+    "echohl Directory | echon '(selidx,cursorrow)=('.s:choices.selidx.','.s:cursorrow.')' | echohl None
+    call s:mock_cursor()
+endfunction "}}}
+
 function! s:init_window() abort "{{{
     call win_execute(s:winid, '%delete')
     call win_execute(s:winid, 'resize ' . min([&lines / 4, s:candidates.count]))
@@ -213,14 +221,6 @@ function! s:init_window() abort "{{{
             \ mapnew(s:candidates.idxes, { _,idx -> s:choices.str(idx) }))
     call win_execute(s:winid, 'call cursor(s:cursorrow, 1)')
     redraw
-endfunction "}}}
-
-function! s:render() abort "{{{
-    call s:update_cursorrow()
-    call s:init_window()
-    echohl Directory | echon s:prompt | echohl None
-    "echohl Directory | echon '(selidx,cursorrow)=('.s:choices.selidx.','.s:cursorrow.')' | echohl None
-    call s:mock_cursor()
 endfunction "}}}
 
 function! s:nochoice_selected() abort "{{{
