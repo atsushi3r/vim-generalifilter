@@ -76,15 +76,13 @@ function! s:init_candidates() abort "{{{
     endfunction "}}}
 
     function! s:candidates.sort() abort "{{{
+        let idxes = self.idxes
+        let scores = self.scores
         for i in range(self.count)
             for j in range(i + 1, self.count - 1)
                 if self.scores[i] > self.scores[j]
-                    let tmp = self.scores[i]
-                    let self.scores[i] = self.scores[j]
-                    let self.scores[j] = tmp
-                    let tmp = self.idxes[i]
-                    let self.idxes[i] = self.idxes[j]
-                    let self.idxes[j] = tmp
+                    let [idxes[i], idxes[j]] = [idxes[j], idxes[i]]
+                    let [scores[i], scores[j]] = [scores[j], scores[i]]
                 endif
             endfor
         endfor
