@@ -178,7 +178,6 @@ function! s:interactive_filter() abort "{{{
         call s:key_filter(chr)
 
         call s:filter(s:inputstr)
-        call s:sort()
     endwhile
     redraw!
     return #{result: s:result, status: s:status}
@@ -283,10 +282,6 @@ function! s:filter(expr) abort "{{{
     call s:candidates.set_idxes(idxes, poses, scores)
 
     "call s:candidates.set_idxes(filter(range(s:choices.count), { _,idx -> index(cands, s:choices.contents[idx]) != -1 }))
-endfunction "}}}
-
-function! s:sort() abort "{{{
-    
 endfunction "}}}
 
 
