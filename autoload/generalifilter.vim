@@ -26,7 +26,7 @@ endfunction "}}}
 
 function! s:init(choices, prompt) abort "{{{
     call s:init_choices()
-    call s:init_cands()
+    call s:init_candidates()
     call s:set_choices(a:choices)
     call s:init_prompt(a:prompt)
 endfunction "}}}
@@ -37,15 +37,14 @@ function! s:init_choices() abort "{{{
             \ descriptions  : [],
             \ nodescriptions: 1,
             \ count         : 0,
-            \ candidxs      : [],
             \ selidx        : -1,
             \ }
-    let g:choices = s:choices " debug
 
     function! s:choices.str(idx) abort "{{{
         let content = self.contents[a:idx]
-        let description = s:choices.nodescriptions ? '' : self.descriptions[a:idx]
-        let contentspace = s:choices.nodescriptions ? &textwidth : &textwidth / 3
+        let width = winwidth(s:winid) - &numberwidth
+        let description = s:choices.nodescriptions ? '' : self.description[a:idx]
+        let contentspace = s:choices.nodescriptions ? width : width / 3
         let contentlength = min([contentspace - 2,
                 \ max(mapnew(s:choices.contents, { _,cont -> strlen(cont) }))])
         let res = trim(call('printf', [
@@ -58,18 +57,37 @@ function! s:init_choices() abort "{{{
     endfunction "}}}
 endfunction "}}}
 
-function! s:init_cands() abort "{{{
-    let s:cands = #{
-            \ _idxs : [],
+function! s:init_candidates() abort "{{{
+    let s:candidates = #{
+            \ idxes : [],
+            \ poses : [],
+            \ scores: [],
             \ count : 0
             \ }
 
-    function! s:cands.idxs(idxs=v:none) abort "{{{
-        if type(a:idxs) == v:t_none
-            return self._idxs
+    function! s:candidates.set_idxes(idxes, poses=v:none, scores=v:none) abort "{{{
+        let self.idxes = a:idxes
+        let self.count = len(a:idxes)
+        let self.poses = type(a:poses) != v:t_none ? a:poses : []
+        if type(a:scores) != v:t_none
+            let self.scores = a:scores
+            call self.sort()
         endif
-        let self._idxs = a:idxs
-        let self.count = len(a:idxs)
+    endfunction "}}}
+
+    function! s:candidates.sort() abort "{{{
+        for i in range(self.count)
+            for j in range(i + 1, self.count - 1)
+                if self.scores[i] > self.scores[j]
+                    let tmp = self.scores[i]
+                    let self.scores[i] = self.scores[j]
+                    let self.scores[j] = tmp
+                    let tmp = self.idxes[i]
+                    let self.idxes[i] = self.idxes[j]
+                    let self.idxes[j] = tmp
+                endif
+            endfor
+        endfor
     endfunction "}}}
 endfunction "}}}
 
@@ -89,7 +107,7 @@ function! s:set_choices_aslist(choices) abort "{{{
     endif
     let s:choices.nodescriptions = 1
     let s:choices.count = len(s:choices.contents)
-    call s:cands.idxs(range(s:choices.count))
+    call s:candidates.set_idxes(range(s:choices.count))
 endfunction "}}}
 
 function! s:set_choices_asdict(choices) abort "{{{
@@ -102,7 +120,7 @@ function! s:set_choices_asdict(choices) abort "{{{
     let s:choices.nodescriptions =
         \ reduce(s:choices.descriptions, { acc,val -> acc && empty(val) }, 1)
     let s:choices.count = len(s:choices.contents)
-    call s:cands.idxs(range(s:choices.count))
+    call s:candidates.set_idxes(range(s:choices.count))
 endfunction "}}}
 
 function! s:init_prompt(prompt) abort "{{{
@@ -147,7 +165,7 @@ function! s:interactive_filter() abort "{{{
     let s:inputstr = ''
     let s:inputstrlength = 0
     let s:cursorcol = 0
-    let s:cursorrow = s:cands.count
+    let s:cursorrow = s:candidates.count
     let s:result = ''
     let s:status = 0
     let s:finished = 0
@@ -162,9 +180,7 @@ function! s:interactive_filter() abort "{{{
         call s:key_filter(chr)
 
         call s:filter(s:inputstr)
-        call Debug('s:cands.idxs() : ' . string(s:cands.idxs()))
         call s:sort()
-        "call Debug('s:cands.idxs() : ' . string(s:cands.idxs()))
     endwhile
     redraw!
     return #{result: s:result, status: s:status}
@@ -172,13 +188,13 @@ endfunction "}}}
 
 function! s:update_cursorrow() abort "{{{
     if !s:nochoice_selected()
-        let s:cursorrow = match(s:cands.idxs(), s:choices.selidx) + 1
+        let s:cursorrow = match(s:candidates.idxes, s:choices.selidx) + 1
     endif
     " Set the cursor to the bottom if the selected choice is not included
     " in the current candidates.
     if !s:cursorrow
-        let s:cursorrow = s:cands.count
-        let s:choices.selidx = get(s:cands.idxs(), -1, -1)
+        let s:cursorrow = s:candidates.count
+        let s:choices.selidx = get(s:candidates.idxes, -1, -1)
     endif
     if s:choices.selidx == -1
         let s:choices.selidx = s:cursorrow - 1
@@ -186,15 +202,15 @@ function! s:update_cursorrow() abort "{{{
 endfunction "}}}
 
 function! s:move_cursor_bottom() abort "{{{
-    let s:cursorrow = s:cands.count
-    let s:choices.selidx = get(s:cands.idxs(), -1, -1)
+    let s:cursorrow = s:candidates.count
+    let s:choices.selidx = get(s:candidates.idxes, -1, -1)
 endfunction "}}}
 
 function! s:init_window() abort "{{{
     call win_execute(s:winid, '%delete')
-    call win_execute(s:winid, 'resize ' . min([&lines / 4, s:cands.count]))
+    call win_execute(s:winid, 'resize ' . min([&lines / 4, s:candidates.count]))
     call setbufline(s:bufnr, 1,
-            \ mapnew(s:cands.idxs(), { _,idx -> s:choices.str(idx) }))
+            \ mapnew(s:candidates.idxes, { _,idx -> s:choices.str(idx) }))
     call win_execute(s:winid, 'call cursor(s:cursorrow, 1)')
     redraw
 endfunction "}}}
@@ -244,11 +260,11 @@ function! s:key_filter(chr) abort "{{{
         endif
     elseif a:chr == "\<C-k>" || a:chr == "\<Up>"
         if s:cursorrow > 1
-            let s:choices.selidx = s:cands.idxs()[s:cursorrow - 2]
+            let s:choices.selidx = s:candidates.idxes[s:cursorrow - 2]
         endif
     elseif a:chr == "\<C-j>" || a:chr == "\<Down>"
-        if s:cursorrow < s:cands.count
-            let s:choices.selidx = s:cands.idxs()[s:cursorrow]
+        if s:cursorrow < s:candidates.count
+            let s:choices.selidx = s:candidates.idxes[s:cursorrow]
         endif
     elseif a:chr >= ' ' && a:chr <= '~'
         let s:inputstr = (s:cursorcol > 0 ? s:inputstr[:s:cursorcol-1] : '') . a:chr . s:inputstr[s:cursorcol:]
@@ -259,11 +275,16 @@ endfunction "}}}
 
 function! s:filter(expr) abort "{{{
     if empty(a:expr)
-        call s:cands.idxs(range(s:choices.count))
+        call s:candidates.set_idxes(range(s:choices.count))
         return
     endif
-    let [cands, poses, scores] = matchfuzzypos(s:choices.contents, a:expr)
-    call s:cands.idxs(filter(range(s:choices.count), { _,idx -> index(cands, s:choices.contents[idx]) != -1 }))
+
+
+    let [contents, poses, scores] = matchfuzzypos(s:choices.contents, a:expr)
+    let idxes = mapnew(contents, { _,cont -> index(s:choices.contents, cont) })
+    call s:candidates.set_idxes(idxes, poses, scores)
+
+    "call s:candidates.set_idxes(filter(range(s:choices.count), { _,idx -> index(cands, s:choices.contents[idx]) != -1 }))
 endfunction "}}}
 
 function! s:sort() abort "{{{
