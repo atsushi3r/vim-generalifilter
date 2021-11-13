@@ -9,6 +9,7 @@ set cpo&vim
 " separator between choices and their descriptions (to be concealed)
 let s:delimiter = '\\'
 let s:defaultprompt = '>> '
+let s:winheightmax = &lines / 4
 
 augroup GeneralIFilter
     autocmd!
@@ -68,10 +69,17 @@ function! s:init_candidates() abort "{{{
     function! s:candidates.set_idxes(idxes, poses=v:none, scores=v:none) abort "{{{
         let self.idxes = a:idxes
         let self.count = len(a:idxes)
-        let self.poses = type(a:poses) != v:t_none ? a:poses : []
-        if type(a:scores) != v:t_none
+        let self.poses = !empty(a:poses) ? a:poses : []
+        if !empty(a:scores)
             let self.scores = a:scores
             call self.sort()
+        endif
+        let candcount = len(a:idxes)
+        if candcount > s:winheightmax
+            let self.idxes = self.idxes[candcount - s:winheightmax:]
+            let self.count = s:winheightmax
+            let self.poses = self.poses[candcount - s:winheightmax:]
+            let self.scores = self.scores[candcount - s:winheightmax:]
         endif
     endfunction "}}}
 
@@ -105,6 +113,7 @@ function! s:set_choices_aslist(choices) abort "{{{
     endif
     let s:choices.nodescriptions = 1
     let s:choices.count = len(s:choices.contents)
+    let s:winheight = min([s:winheightmax, s:choices.count])
     call s:candidates.set_idxes(range(s:choices.count))
 endfunction "}}}
 
@@ -118,6 +127,7 @@ function! s:set_choices_asdict(choices) abort "{{{
     let s:choices.nodescriptions =
         \ reduce(s:choices.descriptions, { acc,val -> acc && empty(val) }, 1)
     let s:choices.count = len(s:choices.contents)
+    let s:winheight = min([s:winheightmax, s:choices.count])
     call s:candidates.set_idxes(range(s:choices.count))
 endfunction "}}}
 
@@ -126,7 +136,7 @@ function! s:init_prompt(prompt) abort "{{{
 endfunction "}}}
 
 function! s:create_window() abort "{{{
-    execute 'silent! botright ' . min([&lines / 4, s:choices.count]) . 'new ' .
+    execute 'silent! botright ' . s:winheight . 'new ' .
             \ escape('+setlocal buftype=nofile
                               \ bufhidden=wipe
                               \ noswapfile
@@ -183,26 +193,6 @@ function! s:interactive_filter() abort "{{{
     return #{result: s:result, status: s:status}
 endfunction "}}}
 
-function! s:update_cursorrow() abort "{{{
-    if !s:nochoice_selected()
-        let s:cursorrow = match(s:candidates.idxes, s:choices.selidx) + 1
-    endif
-    " Set the cursor to the bottom if the selected choice is not included
-    " in the current candidates.
-    if !s:cursorrow
-        let s:cursorrow = s:candidates.count
-        let s:choices.selidx = get(s:candidates.idxes, -1, -1)
-    endif
-    if s:choices.selidx == -1
-        let s:choices.selidx = s:cursorrow - 1
-    endif
-endfunction "}}}
-
-function! s:move_cursor_bottom() abort "{{{
-    let s:cursorrow = s:candidates.count
-    let s:choices.selidx = get(s:candidates.idxes, -1, -1)
-endfunction "}}}
-
 function! s:render() abort "{{{
     call s:update_cursorrow()
     call s:update_window()
@@ -210,9 +200,24 @@ function! s:render() abort "{{{
     call s:mock_cursor()
 endfunction "}}}
 
+function! s:update_cursorrow() abort "{{{
+    if !s:nochoice_selected()
+        let s:cursorrow = index(s:candidates.idxes, s:choices.selidx) + 1
+    endif
+    " Set the cursor to the bottom if the selected choice is not included
+    " in the current candidates.
+    if !s:cursorrow
+        let s:cursorrow = s:candidates.count
+    endif
+    if s:choices.selidx == -1
+        let s:choices.selidx = get(s:candidates.idxes, -1, -1)
+    endif
+endfunction "}}}
+
 function! s:update_window() abort "{{{
     call win_execute(s:winid, '%delete')
-    call win_execute(s:winid, 'resize ' . min([&lines / 4, s:candidates.count]))
+    let s:winheight = min([s:winheightmax, s:candidates.count])
+    call win_execute(s:winid, 'resize ' . s:winheight)
     call setbufline(s:bufnr, 1,
             \ mapnew(s:candidates.idxes, { _,idx -> s:choices.str(idx) }))
     call win_execute(s:winid, 'call cursor(s:cursorrow, 1)')
@@ -274,13 +279,9 @@ function! s:filter(expr) abort "{{{
         call s:candidates.set_idxes(range(s:choices.count))
         return
     endif
-
-
     let [contents, poses, scores] = matchfuzzypos(s:choices.contents, a:expr)
     let idxes = mapnew(contents, { _,cont -> index(s:choices.contents, cont) })
     call s:candidates.set_idxes(idxes, poses, scores)
-
-    "call s:candidates.set_idxes(filter(range(s:choices.count), { _,idx -> index(cands, s:choices.contents[idx]) != -1 }))
 endfunction "}}}
 
 
