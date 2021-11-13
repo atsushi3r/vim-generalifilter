@@ -203,13 +203,14 @@ endfunction "}}}
 function! s:update_cursorrow() abort "{{{
     if !s:nochoice_selected()
         let s:cursorrow = index(s:candidates.idxes, s:choices.selidx) + 1
-    endif
-    " Set the cursor to the bottom if the selected choice is not included
-    " in the current candidates.
-    if !s:cursorrow
-        let s:cursorrow = s:candidates.count
-    endif
-    if s:choices.selidx == -1
+        " If the selected choice is not included in the current candidates,
+        " set s:cursorrow to the bottom and set s:choices.selidx to the one
+        " corresponding to the bottom candidate.
+        if !s:cursorrow
+            let s:cursorrow = s:candidates.count
+            let s:choices.selidx = s:candidates.idxes[s:cursorrow - 1]
+        endif
+    else
         let s:choices.selidx = get(s:candidates.idxes, -1, -1)
     endif
 endfunction "}}}
