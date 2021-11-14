@@ -84,13 +84,16 @@ function! s:init_candidates() abort "{{{
     endfunction "}}}
 
     function! s:candidates.sort() abort "{{{
-        let idxes = self.idxes
-        let scores = self.scores
-        for i in range(self.count)
-            for j in range(i + 1, self.count - 1)
-                if self.scores[i] > self.scores[j]
-                    let [idxes[i], idxes[j]] = [idxes[j], idxes[i]]
-                    let [scores[i], scores[j]] = [scores[j], scores[i]]
+        call self.bubblesort(self.idxes, self.scores)
+    endfunction "}}}
+
+    function! s:candidates.bubblesort(vals, scores) abort "{{{
+        let size = len(a:vals)
+        for i in range(size)
+            for j in range(i + 1, size - 1)
+                if a:scores[i] > a:scores[j]
+                    let [a:vals[i], a:vals[j]] = [a:vals[j], a:vals[i]]
+                    let [a:scores[i], a:scores[j]] = [a:scores[j], a:scores[i]]
                 endif
             endfor
         endfor
@@ -114,7 +117,6 @@ function! s:set_choices_aslist(choices) abort "{{{
     let s:choices.nodescriptions = 1
     let s:choices.count = len(s:choices.contents)
     let s:winheight = min([s:winheightmax, s:choices.count])
-    call s:candidates.set_idxes(range(s:choices.count))
 endfunction "}}}
 
 function! s:set_choices_asdict(choices) abort "{{{
@@ -128,7 +130,6 @@ function! s:set_choices_asdict(choices) abort "{{{
         \ reduce(s:choices.descriptions, { acc,val -> acc && empty(val) }, 1)
     let s:choices.count = len(s:choices.contents)
     let s:winheight = min([s:winheightmax, s:choices.count])
-    call s:candidates.set_idxes(range(s:choices.count))
 endfunction "}}}
 
 function! s:init_prompt(prompt) abort "{{{
@@ -181,13 +182,12 @@ function! s:interactive_filter() abort "{{{
     call s:hide_cursor()
 
     while !s:finished
+        call s:filter(s:inputstr)
         call s:render()
 
         let nr = getchar()
         let chr = !type(nr) ? nr2char(nr) : nr
         call s:key_filter(chr)
-
-        call s:filter(s:inputstr)
     endwhile
     redraw!
     return #{result: s:result, status: s:status}
@@ -201,17 +201,21 @@ function! s:render() abort "{{{
 endfunction "}}}
 
 function! s:update_cursorrow() abort "{{{
-    if !s:nochoice_selected()
-        let s:cursorrow = index(s:candidates.idxes, s:choices.selidx) + 1
-        " If the selected choice is not included in the current candidates,
-        " set s:cursorrow to the bottom and set s:choices.selidx to the one
-        " corresponding to the bottom candidate.
-        if !s:cursorrow
-            let s:cursorrow = s:candidates.count
-            let s:choices.selidx = s:candidates.idxes[s:cursorrow - 1]
-        endif
-    else
+    if s:choices.selidx == -1
         let s:choices.selidx = get(s:candidates.idxes, -1, -1)
+        let s:cursorrow = s:candidates.count
+        return
+    endif
+    if s:candidates.count == 0
+        let s:cursorrow = 1
+        let s:choices.selidx = -1
+        return
+    endif
+    " 0 < s:cursorrow <= s:candidates.count
+    let s:cursorrow = index(s:candidates.idxes, s:choices.selidx) + 1
+    if s:cursorrow == 0
+        let s:cursorrow = s:candidates.count
+        let s:choices.selidx = s:candidates.idxes[s:cursorrow - 1]
     endif
 endfunction "}}}
 
@@ -223,10 +227,6 @@ function! s:update_window() abort "{{{
             \ mapnew(s:candidates.idxes, { _,idx -> s:choices.str(idx) }))
     call win_execute(s:winid, 'call cursor(s:cursorrow, 1)')
     redraw
-endfunction "}}}
-
-function! s:nochoice_selected() abort "{{{
-    return s:choices.selidx == -1
 endfunction "}}}
 
 function! s:mock_cursor() abort "{{{
@@ -277,7 +277,7 @@ endfunction "}}}
 
 function! s:filter(expr) abort "{{{
     if empty(a:expr)
-        call s:candidates.set_idxes(range(s:choices.count))
+        call s:candidates.set_idxes(range(min([s:winheightmax, s:choices.count])))
         return
     endif
     let [contents, poses, scores] = matchfuzzypos(s:choices.contents, a:expr)
